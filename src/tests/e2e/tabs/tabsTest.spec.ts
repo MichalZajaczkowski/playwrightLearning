@@ -255,4 +255,38 @@ test.describe("Accordion And Tabs - Toggle Accordion", () => {
         const toggleButton = iframe.locator('#toggle');
         await expect(toggleButton).toBeVisible();
     });
+
+    test("should check if the icon appears and disappears after pressing the button", async ({page}) => {
+        await page.waitForLoadState("networkidle");
+        await globalQaPage.toggleAccordionClick();
+
+        // Zmiana selektora iframe na właściwy dla Toggle Icons
+        const iframe = page.frameLocator('iframe[data-src*="custom-icons.html"]');
+        await iframe.locator('#accordion').waitFor();
+
+        // Poprawiony selektor dla ikon
+        const toggleIcons = iframe.locator('.ui-accordion-header .ui-accordion-header-icon');
+
+        // Sprawdź ikony dla każdego akordeonu
+        for (let i = 0; i < 4; i++) {
+            await expect(toggleIcons.nth(i)).toBeVisible();
+        }
+
+        // Kliknij przycisk Toggle
+        const toggleButton = iframe.locator('#toggle');
+        await toggleButton.click();
+
+        // Sprawdź czy ikony zniknęły
+        for (let i = 0; i < 4; i++) {
+            await expect(toggleIcons.nth(i)).not.toBeVisible();
+        }
+
+        // Kliknij przycisk Toggle
+        await toggleButton.click();
+
+        // Sprawdź czy ikony się pojawiły
+        for (let i = 0; i < 4; i++) {
+            await expect(toggleIcons.nth(i)).toBeVisible();
+        }
+    });
 });
