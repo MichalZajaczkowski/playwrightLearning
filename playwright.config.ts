@@ -2,28 +2,44 @@ import { defineConfig } from "@playwright/test";
 import os from "os";
 
 export default defineConfig({
-  testDir: "./tests",
-  timeout: 30000, // 30 sekund na test
+  testDir: "./src/tests",
+  timeout: 45000,
   expect: {
-    timeout: 5000, // 5 sekund na oczekiwanie elementów
+    timeout: 5000,
   },
+  retries: process.env.CI ? 2 : 0,
+
   reporter: [
-    ["list"],
-    ["allure-playwright"], // Generowanie raportu Allure
+    ['list'],
+    ['allure-playwright', {
+      detail: true,
+      outputFolder: "allure-results",
+      suiteTitle: false
+    }]
   ],
+
   workers: process.env.CI ? 2 : Math.max(1, os.cpus().length - 1),
-  fullyParallel: true, // Pozwala na pełną równoległość testów
-  globalSetup: require.resolve("./global-setup"), // Ustawienie raportowania w katalogach
+  fullyParallel: true,
+  globalSetup: require.resolve("./global-setup"),
+
   use: {
-    headless: true, // Testy w trybie headless
-    screenshot: "only-on-failure",
-    trace: "on",
+    baseURL: 'https://www.globalsqa.com',
+    actionTimeout: 15000,
+    navigationTimeout: 30000,
+    screenshot: 'only-on-failure',
+    trace: 'retain-on-failure',
+    video: 'retain-on-failure',
     launchOptions: {
-      slowMo: 0, // Wyłącza spowolnienie testów
+      slowMo: process.env.SLOWMO ? parseInt(process.env.SLOWMO) : 0,
     },
-    contextOptions: {
-      viewport: { width: 1280, height: 720 }, // Ustawienie rozmiaru okna
-    },
-    browserName: "chromium", // Możesz zmienić przeglądarkę, jeśli potrzebujesz
   },
+
+  projects: [
+    {
+      name: 'chromium',
+      use: {
+        viewport: { width: 2560, height: 1440 },
+      },
+    },
+  ],
 });

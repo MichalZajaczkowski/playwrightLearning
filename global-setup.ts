@@ -1,77 +1,54 @@
 import fs from "fs";
 import path from "path";
-import crypto from "crypto";
 
-const MAX_REPORTS = 5; // Maksymalna liczba przechowywanych raportów
-const allureResultsDir = path.join(process.cwd(), "allure-results");
+const RESULTS_DIR = "allure-results";
+const REPORT_DIR = "allure-report";
 
-// Generowanie unikalnej nazwy folderu w formacie: RRRR-MM-DD_GG-MM-SS-ID
-function generateUniqueFolderName(): string {
-  const now = new Date();
-  // Formatowanie daty jako YYYY-MM-DD
-  const datePart = now.toISOString().split("T")[0];
-  // Pobranie czasu HH-MM-SS (bez milisekund i strefy czasowej)
-  const timePart = now.toTimeString().split(" ")[0].replace(/:/g, "-");
-  const uniqueId = crypto.randomBytes(4).toString("hex");
-  return `${datePart}_${timePart}_${uniqueId}`;
-}
+class ReportManager {
+  private readonly allureResultsDir: string;
+  private readonly allureReportDir: string;
 
-// Usuwanie najstarszych raportów, jeśli liczba folderów przekracza MAX_REPORTS
-function cleanOldReports(): void {
-  if (!fs.existsSync(allureResultsDir)) {
-    fs.mkdirSync(allureResultsDir, { recursive: true });
-    return;
+  constructor() {
+    this.allureResultsDir = path.join(process.cwd(), RESULTS_DIR);
+    this.allureReportDir = path.join(process.cwd(), REPORT_DIR);
   }
 
-  // Pobierz podfoldery (czyli raporty)
-  const reportFolders = fs
-    .readdirSync(allureResultsDir)
-    .map((name) => ({
-      name,
-      fullPath: path.join(allureResultsDir, name),
-    }))
-    .filter((entry) => fs.lstatSync(entry.fullPath).isDirectory())
-    // Sortowanie rosnąco – najstarszy folder na początku
-    .map((entry) => ({
-      name: entry.name,
-      mtime: fs.statSync(entry.fullPath).mtime.getTime(),
-    }))
-    .sort((a, b) => a.mtime - b.mtime);
-
-  // Usuń najstarsze foldery, jeśli liczba przekracza MAX_REPORTS - usuwamy tyle, by zostało tylko MAX_REPORTS folderów
-  while (reportFolders.length >= MAX_REPORTS) {
-    const oldest = reportFolders.shift();
-    if (oldest) {
-      const reportPath = path.join(allureResultsDir, oldest.name);
-      fs.rmSync(reportPath, { recursive: true, force: true });
-      console.log(`🗑 Usunięto stary katalog raportu: ${oldest.name}`);
+  private ensureDirectoryExists(dir: string): void {
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
     }
   }
+
+  private preserveHistory(): void {
+    const historyDir = path.join(this.allureResultsDir, 'history');
+    const reportHistoryDir = path.join(this.allureReportDir, 'history');
+
+    this.ensureDirectoryExists(this.allureResultsDir);
+
+    // Jeśli istnieje historia w raporcie, skopiuj ją do wyników
+    if (fs.existsSync(reportHistoryDir)) {
+      this.ensureDirectoryExists(historyDir);
+      fs.cpSync(reportHistoryDir, historyDir, { recursive: true });
+    }
+  }
+
+  public prepareReportDirectory(): void {
+    // Zachowaj historię przed wyczyszczeniem
+    this.preserveHistory();
+
+    // Wyczyść folder wyników, zachowując historię
+    fs.readdirSync(this.allureResultsDir).forEach(file => {
+      const filePath = path.join(this.allureResultsDir, file);
+      if (file !== 'history' && fs.existsSync(filePath)) {
+        fs.rmSync(filePath, { recursive: true, force: true });
+      }
+    });
+  }
 }
 
-// Przygotowanie nowego katalogu raportu oraz ustawienie zmiennej środowiskowej
-function prepareNewReportFolder(): string {
-  const folderName = generateUniqueFolderName();
-  const newFolderPath = path.join(allureResultsDir, folderName);
-  fs.mkdirSync(newFolderPath, { recursive: true });
-  process.env.ALLURE_RESULTS_DIRECTORY = newFolderPath;
-  console.log(`📁 Nowy raport będzie zapisany w: ${newFolderPath}`);
-  return newFolderPath;
-}
-
-// Globalna funkcja wykonywana przed testami
 const globalSetup = async (): Promise<void> => {
-  cleanOldReports();
-  const newReportFolder = prepareNewReportFolder();
-
-  // Przenoszenie plików (np. porzuconych z poprzednich uruchomień) z katalogu allure-results
-  // – pomijamy podfoldery (czyli już raporty)
-  fs.readdirSync(allureResultsDir).forEach((item) => {
-    const itemPath = path.join(allureResultsDir, item);
-    if (fs.lstatSync(itemPath).isFile()) {
-      fs.renameSync(itemPath, path.join(newReportFolder, item));
-    }
-  });
+  const reportManager = new ReportManager();
+  reportManager.prepareReportDirectory();
 };
 
 export default globalSetup;

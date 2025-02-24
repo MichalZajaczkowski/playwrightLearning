@@ -3,8 +3,10 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "test": "npx playwright test",
-    "merge:allure": "node merge-allure-results.js"
+    "pretest": "rd /s /q allure-results 2>nul || true && rd /s /q allure-report 2>nul || true",
+    "test": "playwright test",
+    "posttest": "allure generate allure-results --clean && allure open allure-report",
+    "report": "allure generate allure-results --clean && allure open allure-report"
   },
   "keywords": [],
   "author": "",
@@ -13,7 +15,8 @@
   "devDependencies": {
     "@playwright/test": "^1.50.0",
     "@types/node": "^22.12.0",
-    "allure-playwright": "^3.0.9"
+    "allure-playwright": "^3.0.9",
+    "rimraf": "^6.0.1"
   },
   "type": "commonjs"
 }
