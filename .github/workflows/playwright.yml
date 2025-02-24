@@ -6,7 +6,7 @@ on:
   pull_request:
     branches: [master]
   schedule:
-    - cron: '07 21 * * *'  # Uruchamia testy codziennie o 20:45 UTC
+    - cron: '18 21 * * *'  # Uruchamia testy codziennie o 21:18 UTC
 
 jobs:
   test:
