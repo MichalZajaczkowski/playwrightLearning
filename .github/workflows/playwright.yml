@@ -5,6 +5,8 @@ on:
     branches: [master]
   pull_request:
     branches: [master]
+  schedule:
+    - cron: '30 20 * * *'  # Uruchamia testy codziennie o 20:30 UTC
 
 jobs:
   test:
@@ -38,11 +40,11 @@ jobs:
 
       - name: Generate Allure Report
         if: always()
-        run: allure generate allure-results --clean
+        run: allure generate allure-results --clean -o allure-report
 
-      - name: Upload Allure results as artifact
-        if: always()
+      - name: Upload Allure Report
         uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: allure-report
           path: allure-report
